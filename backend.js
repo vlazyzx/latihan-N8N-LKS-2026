@@ -5,7 +5,7 @@ const chatContainer = document.getElementById('messages');
 const userInput = document.getElementById('inp');
 const sendButton = document.getElementById('send');
 const chatForm = document.getElementById('form');
-const typingIndicator = document.getElementById('typing-indicator');
+const typingIndicator = document.getElementById('typing');
 const settingModal = document.getElementById('overlay');
 const webhookUrlInput = document.getElementById('wh-url');
 
@@ -51,33 +51,56 @@ function scrollToBottom() {
 
 function showTyping() {
     if (typingIndicator) {
-        typingIndicator.classList.remove('hidden');
+        typingIndicator.style.display = 'flex';
     }
     scrollToBottom();
 }
 
 function hideTyping() {
     if (typingIndicator) {
-        typingIndicator.classList.add('hidden');
+        typingIndicator.style.display = 'none';
     }
 }
 
 function addMessageToUI(sender, text, type) {
-    const messageDiv = document.createElement('div');
-
+    const row = document.createElement('div');
+    
     if (type === 'user') {
-        messageDiv.className = 'flex gap-2 justify-end';
-        messageDiv.innerHTML = `
-            <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr">${escapeHTML(text)}</div>`;
+        row.className = 'row user-row';
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble user';
+        bubble.textContent = escapeHTML(text);
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'mini-avatar user';
+        avatar.textContent = '👤';
+        
+        row.appendChild(bubble);
+        row.appendChild(avatar);
     } else {
+        row.className = 'row bot-row';
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'mini-avatar bot';
+        const img = document.createElement('img');
+        img.src = 'ypippilogo.jpeg';
+        img.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+        img.alt = 'YP IPPI';
+        avatar.appendChild(img);
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble bot';
+        if (type === 'system') {
+            bubble.className = 'bubble system';
+        }
         const formattedText = formatBotResponse(text);
-        messageDiv.className = 'flex gap-2';
-        messageDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-full bg-blue-100"></div>
-            <div class="bg-white border border-gray-200 rounded-2xl p-3">${formattedText}</div>`;
+        bubble.innerHTML = formattedText;
+        
+        row.appendChild(avatar);
+        row.appendChild(bubble);
     }
 
-    chatContainer.appendChild(messageDiv);
+    chatContainer.appendChild(row);
     scrollToBottom();
 }
 
@@ -93,9 +116,55 @@ function escapeHTML(str) {
     
 function formatBotResponse(text) {
     let formatted = escapeHTML(text);
+    
+    // Format bold
     formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Format italic
     formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    return formatted;
+    
+    // Format code blocks
+    formatted = formatted.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>');
+    
+    // Format inline code
+    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Convert newlines to proper formatting
+    let lines = formatted.split('\n');
+    let inList = false;
+    let listItems = [];
+    let result = [];
+    
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        
+        // Check if line is a list item (numbered or bulleted)
+        if (/^(\d+\.|•|-|\*)\s/.test(line)) {
+            if (!inList) {
+                inList = true;
+                listItems = [];
+            }
+            // Remove list marker and keep content
+            let content = line.replace(/^(\d+\.|•|-|\*)\s+/, '');
+            listItems.push(`<li>${content}</li>`);
+        } else {
+            if (inList) {
+                result.push(`<ol>${listItems.join('')}</ol>`);
+                inList = false;
+                listItems = [];
+            }
+            if (line) {
+                result.push(`<p>${line}</p>`);
+            }
+        }
+    }
+    
+    if (inList) {
+        result.push(`<ol>${listItems.join('')}</ol>`);
+    }
+    
+    return result.join('') || formatted;
 }
 
 chatForm.addEventListener('submit', async (e) => {
