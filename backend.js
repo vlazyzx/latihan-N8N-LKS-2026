@@ -1,33 +1,33 @@
 const sessionId = Math.random().toString(36).substring(2, 15);
 let n8nWebhookUrl = '';
 
-const chatContainer = document.getElementById('chat-container');
-const userInput = document.getElementById('user-input');
-const sendButton = document.getElementById('send-button');  
-const chatForm = document.getElementById('chat-form');
+const chatContainer = document.getElementById('messages');
+const userInput = document.getElementById('inp');
+const sendButton = document.getElementById('send');
+const chatForm = document.getElementById('form');
 const typingIndicator = document.getElementById('typing-indicator');
-const settingsButton = document.getElementById('settings-button');
-const webhookUrlInput = document.getElementById('webhook-url');
+const settingModal = document.getElementById('overlay');
+const webhookUrlInput = document.getElementById('wh-url');
 
 window.onload = () => {
-    const saveUrl = localStorage.getItem('webhookUrl');
+    const saveUrl = localStorage.getItem('n8n_webhook_url');
     if (saveUrl) {
         n8nWebhookUrl = saveUrl;
         webhookUrlInput.value = saveUrl;
     } else {
-        setTimeout(ToggleSettings, 500);
+        setTimeout(toggleSettings, 500);
     }
 }
 
-function ToggleSettings() {
-    settingModal.classList.toggle('hidden');
+function toggleSettings() {
+    settingModal.classList.toggle('open');
 }
 
 function saveSettings() {
-    const url = webhookInput.value.trim();
+    const url = webhookUrlInput.value.trim();
 
     if (!url) {
-        addMessage('Sistem', 'Peringatan: URL Webhook tidak boleh kosong!', 'bot')
+        addMessageToUI('Sistem', 'Peringatan: URL Webhook tidak boleh kosong!', 'bot');
         return;
     }
 
@@ -35,14 +35,14 @@ function saveSettings() {
         new URL(url);
 
     } catch (e) {
-        addMessage('Sistem', 'Peringatan: URL Webhook tidak valid!', 'bot')
+        addMessageToUI('Sistem', 'Peringatan: URL Webhook tidak valid!', 'bot');
         return;
     }
 
     n8nWebhookUrl = url;
     localStorage.setItem('n8n_webhook_url', n8nWebhookUrl);
     addMessageToUI('Sistem', 'URL Webhook berhasil disimpan!', 'bot');
-    ToggleSettings();
+    toggleSettings();
 }
 
 function scrollToBottom() {
@@ -50,27 +50,31 @@ function scrollToBottom() {
 }
 
 function showTyping() {
-    typingIndicator.classList.remove('hidden');
+    if (typingIndicator) {
+        typingIndicator.classList.remove('hidden');
+    }
     scrollToBottom();
 }
 
 function hideTyping() {
-    typingIndicator.classList.add('hidden');
+    if (typingIndicator) {
+        typingIndicator.classList.add('hidden');
+    }
 }
 
-function addMessage(sender, text, type) {
+function addMessageToUI(sender, text, type) {
     const messageDiv = document.createElement('div');
-    
+
     if (type === 'user') {
         messageDiv.className = 'flex gap-2 justify-end';
         messageDiv.innerHTML = `
-            <div class="bg-blue-600 text-white p-3 rounded-2x1 rounded-tr ${escapeHtml(text)} </div>`;
+            <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr">${escapeHTML(text)}</div>`;
     } else {
-        const formattedText = formatBotReponse(text);
+        const formattedText = formatBotResponse(text);
         messageDiv.className = 'flex gap-2';
         messageDiv.innerHTML = `
-            <div class="w-8 h-8 rounded-full bg-blue-100 ..."> <i class="fas fa-robot text-sm"> </div>
-            <div class="bg-white border border-gray-200 ...${formattedText} </div>`;
+            <div class="w-8 h-8 rounded-full bg-blue-100"></div>
+            <div class="bg-white border border-gray-200 rounded-2xl p-3">${formattedText}</div>`;
     }
 
     chatContainer.appendChild(messageDiv);
@@ -87,8 +91,8 @@ function escapeHTML(str) {
     }[tag]));
 }
     
-function formatBotReponse(text) {
-    let formotted = escapeHTML(text);
+function formatBotResponse(text) {
+    let formatted = escapeHTML(text);
     formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
     return formatted;
@@ -120,7 +124,7 @@ chatForm.addEventListener('submit', async (e) => {
             },
             body: JSON.stringify({ 
                 sessionId: sessionId,
-                message: message, 
+                message: userMessage, 
                 timestamp: new Date().toISOString() 
             })
         });
